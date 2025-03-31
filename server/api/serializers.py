@@ -19,13 +19,26 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class ExperienceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Experience
-        fields = ["id", "title", "company", "duration", "description", "technologies", "image"]
+class ExperienceSerializer(serializers.Serializer):
+    """Serializer for Experience data from Firestore"""
+    id = serializers.CharField(read_only=True)
+    title = serializers.CharField(max_length=200)
+    company = serializers.CharField(max_length=200)
+    duration = serializers.CharField(max_length=100)
+    description = serializers.JSONField()
+    technologies = serializers.JSONField()
+    image = serializers.CharField(max_length=255)
+    created_at = serializers.DateTimeField(read_only=True, required=False)
+    updated_at = serializers.DateTimeField(read_only=True, required=False)
 
 
-class ProjectSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = ["id", "title", "description", "image", "technologies", "category"]
+class ProjectSerializer(serializers.Serializer):
+    """Serializer for Project data from Firestore"""
+    id = serializers.CharField(read_only=True)
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField()
+    image = serializers.CharField(max_length=255)
+    technologies = serializers.JSONField()
+    category = serializers.JSONField()
+    created_at = serializers.DateTimeField(read_only=True, required=False)
+    updated_at = serializers.DateTimeField(read_only=True, required=False)

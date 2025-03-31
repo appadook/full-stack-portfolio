@@ -3,6 +3,11 @@ venv/
 firebase-init/
 __pycache__/
 server/firebase-key.json
+server/api/__pycache__/*
+server/api/*.pyc
+server/server/__pycache__/*
+server/server/*.pyc
+
 
 
 
