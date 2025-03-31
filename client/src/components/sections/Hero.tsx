@@ -1,13 +1,38 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowDown, Download } from 'lucide-react';
 import AnimatedText from '@/components/ui/AnimatedText';
 import { scrollToSection } from '@/lib/animations';
 import { about } from '@/lib/data';
 import ThreeScene from '../ThreeScene';
 import ProfilePicture from '../ProfilePicture';
+import LoadingIndicator from '@/components/LoadingIndicator';
 
 const Hero = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [threeSceneError, setThreeSceneError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Add a timeout to ensure minimum loading time for visual consistency
+  useEffect(() => {
+    const minLoadingTime = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000); // Minimum 3 second loading time for visual effect
+    
+    return () => clearTimeout(minLoadingTime);
+  }, []);
+  
+  // Handle the ThreeScene loading state changes
+  const handleLoadingStateChange = (loading: boolean) => {
+    // Only set loading to false if the minimum time has already passed
+    if (!loading) {
+      setIsLoading(prevIsLoading => prevIsLoading ? true : false);
+      
+      // Add a small delay before hiding the loader to ensure smooth transition
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
+    }
+  };
   
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -90,6 +115,25 @@ const Hero = () => {
     };
   }, []);
   
+  // Render loading indicator when content is loading
+  if (isLoading) {
+    return (
+      <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
+        <div className="flex flex-col items-center justify-center">
+          <div className="mb-6">
+            <LoadingIndicator />
+          </div>
+          <h2 className="text-2xl font-medium text-primary animate-pulse">
+            Loading Experience
+          </h2>
+          <p className="text-muted-foreground mt-2 text-center">
+            Preparing interactive 3D elements...
+          </p>
+        </div>
+      </section>
+    );
+  }
+  
   return (
     <section
       id="hero"
@@ -97,7 +141,11 @@ const Hero = () => {
     >
       {/* Render the Three.js scene component with higher z-index */}
       <div className="absolute inset-0 z-0">
-        <ThreeScene />
+        {!threeSceneError && (
+          <ErrorBoundary onError={() => setThreeSceneError(true)}>
+            <ThreeScene onLoadingStateChange={handleLoadingStateChange} />
+          </ErrorBoundary>
+        )}
       </div>
 
       {/* Semi-transparent overlay with reduced opacity */}
@@ -190,5 +238,17 @@ const Hero = () => {
     </section>
   );
 };
+
+// Simple error boundary component
+class ErrorBoundary extends React.Component<{ children: React.ReactNode, onError: () => void }> {
+  componentDidCatch(error: any) {
+    console.error("Error in component:", error);
+    this.props.onError();
+  }
+  
+  render() {
+    return this.props.children;
+  }
+}
 
 export default Hero;

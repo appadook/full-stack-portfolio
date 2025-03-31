@@ -2,11 +2,18 @@ import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const ThreeScene = () => {
+interface ThreeSceneProps {
+  onLoadingStateChange?: (isLoading: boolean) => void;
+}
+
+const ThreeScene = ({ onLoadingStateChange }: ThreeSceneProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    // Signal that loading has started
+    onLoadingStateChange?.(true);
     
     // Create scene and set background transparent (since hero has its own gradients)
     const scene = new THREE.Scene();
@@ -164,42 +171,95 @@ const ThreeScene = () => {
     // Load and add 3D model (update the URL to your model path in public folder)
     let model: THREE.Group;
     const loader = new GLTFLoader();
-    loader.load('/models/3d_model.glb', (gltf) => {
-      model = gltf.scene;
-      // Position the model lower in the scene
-      model.position.set(0, -2, 0); // Changed from (0, 0, 0) to move model downward
-      
-      // Enable shadows for all model meshes and increase material brightness if possible
-      model.traverse((node) => {
-        if (node instanceof THREE.Mesh) {
-          node.castShadow = true;
-          node.receiveShadow = true;
-          
-          // Enhance material properties - make materials more responsive to light
-          if (node.material) {
-            if (Array.isArray(node.material)) {
-              node.material.forEach(material => {
-                if (material) {
-                  // Increase the emissive factor slightly to make model more visible
-                  if (material.emissive) material.emissive.set(0x222222);
-                  // Increase material brightness
-                  if (material.color) material.color.multiplyScalar(1.2);
-                  material.needsUpdate = true;
-                }
-              });
-            } else if (node.material) {
-              // Increase the emissive factor slightly to make model more visible
-              if (node.material.emissive) node.material.emissive.set(0x222222);
-              // Increase material brightness
-              if (node.material.color) node.material.color.multiplyScalar(1.2);
-              node.material.needsUpdate = true;
+    
+    // Create a loading manager to track loading progress
+    const loadingManager = new THREE.LoadingManager(
+      // onLoad callback
+      () => {
+        console.log('ThreeScene: Loading complete');
+        // Signal that loading has finished
+        onLoadingStateChange?.(false);
+      },
+      // onProgress callback
+      (url, itemsLoaded, itemsTotal) => {
+        console.log(`ThreeScene: Loading file: ${url} (${itemsLoaded}/${itemsTotal})`);
+      },
+      // onError callback
+      (url) => {
+        console.error(`ThreeScene: Error loading ${url}`);
+        // Signal that loading has finished despite error
+        onLoadingStateChange?.(false);
+      }
+    );
+    
+    // Use the loading manager with the GLTFLoader
+    const gltfLoader = new GLTFLoader(loadingManager);
+    
+    // Add error handling for model loading
+    gltfLoader.load(
+      '/models/3d_model.glb', 
+      (gltf) => {
+        model = gltf.scene;
+        // Position the model lower in the scene
+        model.position.set(0, -2, 0); // Changed from (0, 0, 0) to move model downward
+        
+        // Enable shadows for all model meshes and increase material brightness if possible
+        model.traverse((node) => {
+          if (node instanceof THREE.Mesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+            
+            // Enhance material properties - make materials more responsive to light
+            if (node.material) {
+              if (Array.isArray(node.material)) {
+                node.material.forEach(material => {
+                  if (material) {
+                    // Increase the emissive factor slightly to make model more visible
+                    if (material.emissive) material.emissive.set(0x222222);
+                    // Increase material brightness
+                    if (material.color) material.color.multiplyScalar(1.2);
+                    material.needsUpdate = true;
+                  }
+                });
+              } else if (node.material) {
+                // Increase the emissive factor slightly to make model more visible
+                if (node.material.emissive) node.material.emissive.set(0x222222);
+                // Increase material brightness
+                if (node.material.color) node.material.color.multiplyScalar(1.2);
+                node.material.needsUpdate = true;
+              }
             }
           }
-        }
-      });
-      
-      scene.add(model);
-    });
+        });
+        
+        scene.add(model);
+      },
+      // onProgress callback
+      (xhr) => {
+        const percentComplete = xhr.loaded / xhr.total * 100;
+        console.log(`ThreeScene: 3D model ${Math.round(percentComplete)}% loaded`);
+      },
+      (error) => {
+        // Handle error loading model
+        console.error('Error loading 3D model:', error);
+        // Create a fallback object so the scene still works
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshStandardMaterial({ 
+          color: 0x6b21a8, // Purple color
+          emissive: 0x3b0764,
+          roughness: 0.5,
+          metalness: 0.8
+        });
+        const fallbackModel = new THREE.Mesh(geometry, material);
+        fallbackModel.position.set(0, -2, 0);
+        fallbackModel.castShadow = true;
+        fallbackModel.receiveShadow = true;
+        scene.add(fallbackModel);
+        
+        // Signal that loading has finished despite error
+        onLoadingStateChange?.(false);
+      }
+    );
 
     // Animate the scene: floating model & rotated star field
     const clock = new THREE.Clock();
@@ -250,7 +310,7 @@ const ThreeScene = () => {
       window.removeEventListener('resize', handleResize);
       containerRef.current?.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [onLoadingStateChange]);
 
   return <div ref={containerRef} className="absolute inset-0 z-0" />;
 };

@@ -1,13 +1,233 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SectionHeader from '@/components/ui/SectionHeader';
-import { experiences } from '@/lib/data/Experience';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { CalendarDays, Building, MousePointer } from 'lucide-react';
 import { useInView } from '@/lib/animations';
 import { cn } from '@/lib/utils';
+import { experienceAPI, ExperienceData } from '@/api';
+import LoadingIndicator from '@/components/LoadingIndicator';
+import { experiences as localExperienceData } from '@/lib/data/Experience'; // Import local data as fallback
+
+// Extract the experience card to a separate component to properly use hooks
+const ExperienceCard = ({ 
+  experience, 
+  index, 
+  isLeft 
+}: { 
+  experience: ExperienceData; 
+  index: number; 
+  isLeft: boolean;
+}) => {
+  const [ref, isInView] = useInView<HTMLDivElement>();
+  const [isHovering, setIsHovering] = useState(false);
+  const companyInitial = experience.company.charAt(0);
+  
+  return (
+    <div 
+      key={experience.id}
+      ref={ref}
+      className="relative md:grid md:grid-cols-[1fr_60px_1fr] items-start"
+    >
+      {/* LEFT COLUMN */}
+      <div className="w-full">
+        {/* Experience Card on Left side (for even indexes) */}
+        <div 
+          className={cn(
+            "transition-all duration-700 transform mb-6 md:mb-0 relative",
+            isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10",
+            isLeft ? "block" : "hidden"
+          )}
+          style={{ transitionDelay: `${index * 150}ms` }}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+        >
+          <Card className="border border-border hover:border-primary/20 hover:shadow-md transition-all duration-300 md:mr-6 w-full">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="w-16 h-16 border-2 border-primary/20">
+                  {experience.image ? (
+                    <AvatarImage src={experience.image} alt={experience.company} />
+                  ) : (
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                      {companyInitial}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-1">{experience.title}</h3>
+                  
+                  <div className="flex items-center text-primary">
+                    <Building size={16} className="mr-1" />
+                    <span>{experience.company}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-muted-foreground mt-2">
+                    <CalendarDays size={16} className="mr-1" />
+                    <span>{experience.duration}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {experience.technologies && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {experience.technologies.map((tech, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              {/* Description appears on hover */}
+              <div className={cn(
+                "mt-4 transition-all duration-300 overflow-hidden", 
+                isHovering ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+              )}>
+                <ul className="space-y-2 list-disc pl-6 mt-2">
+                  {experience.description.map((item, i) => (
+                    <li key={i} className="text-muted-foreground">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      
+      {/* CENTER COLUMN (Timeline) */}
+      <div className="hidden md:block"></div>
+      
+      {/* RIGHT COLUMN */}
+      <div className="w-full">
+        {/* Experience Card on Right side (for odd indexes) */}
+        <div 
+          className={cn(
+            "transition-all duration-700 transform relative",
+            isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10",
+            !isLeft ? "block" : "hidden"
+          )}
+          style={{ transitionDelay: `${index * 150}ms` }}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+        >
+          <Card className="border border-border hover:border-primary/20 hover:shadow-md transition-all duration-300 md:ml-6 w-full">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="w-16 h-16 border-2 border-primary/20">
+                  {experience.image ? (
+                    <AvatarImage src={experience.image} alt={experience.company} />
+                  ) : (
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
+                      {companyInitial}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-1">{experience.title}</h3>
+                  
+                  <div className="flex items-center text-primary">
+                    <Building size={16} className="mr-1" />
+                    <span>{experience.company}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-muted-foreground mt-2">
+                    <CalendarDays size={16} className="mr-1" />
+                    <span>{experience.duration}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {experience.technologies && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {experience.technologies.map((tech, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              {/* Description appears on hover */}
+              <div className={cn(
+                "mt-4 transition-all duration-300 overflow-hidden", 
+                isHovering ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+              )}>
+                <ul className="space-y-2 list-disc pl-6 mt-2">
+                  {experience.description.map((item, i) => (
+                    <li key={i} className="text-muted-foreground">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Experience = () => {
+  const [experiences, setExperiences] = useState<ExperienceData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [usingLocalData, setUsingLocalData] = useState(false);
+
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      try {
+        setLoading(true);
+        const data = await experienceAPI.getAll();
+        setExperiences(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch experiences:', err);
+        // Fall back to local data if API request fails
+        console.log('Falling back to local experience data');
+        setExperiences(localExperienceData as unknown as ExperienceData[]);
+        setUsingLocalData(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExperiences();
+  }, []);
+
+  if (loading) {
+    return (
+      <section id="experience" className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <SectionHeader title="My Experience" subtitle="Career Path" />
+          <div className="flex justify-center items-center py-20">
+            <LoadingIndicator />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section id="experience" className="py-24 bg-background">
+        <div className="container mx-auto px-4">
+          <SectionHeader title="My Experience" subtitle="Career Path" />
+          <div className="text-center text-red-500 py-10">
+            <p>{error}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="experience" className="py-24 bg-background">
       <div className="container mx-auto px-4">
@@ -36,167 +256,14 @@ const Experience = () => {
             </div>
             
             <div className="space-y-16 md:space-y-28">
-              {experiences.map((experience, index) => {
-                const isLeft = index % 2 === 0;
-                const companyInitial = experience.company.charAt(0);
-                const [ref, isInView] = useInView<HTMLDivElement>();
-                const [isHovering, setIsHovering] = useState(false);
-                
-                return (
-                  <div 
-                    key={experience.id}
-                    ref={ref}
-                    className="relative md:grid md:grid-cols-[1fr_60px_1fr] items-start"
-                  >
-                    {/* LEFT COLUMN */}
-                    <div className="w-full">
-                      {/* Experience Card on Left side (for even indexes) */}
-                      <div 
-                        className={cn(
-                          "transition-all duration-700 transform mb-6 md:mb-0 relative",
-                          isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10",
-                          isLeft ? "block" : "hidden"
-                        )}
-                        style={{ transitionDelay: `${index * 150}ms` }}
-                        onMouseEnter={() => setIsHovering(true)}
-                        onMouseLeave={() => setIsHovering(false)}
-                      >
-                        <Card className="border border-border hover:border-primary/20 hover:shadow-md transition-all duration-300 md:mr-6 w-full">
-                          <CardContent className="p-6">
-                            <div className="flex items-start gap-4">
-                              <Avatar className="w-16 h-16 border-2 border-primary/20">
-                                {experience.Image ? (
-                                  <AvatarImage src={experience.Image} alt={experience.company} />
-                                ) : (
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                                    {companyInitial}
-                                  </AvatarFallback>
-                                )}
-                              </Avatar>
-                              
-                              <div className="flex-1">
-                                <h3 className="text-xl font-bold mb-1">{experience.title}</h3>
-                                
-                                <div className="flex items-center text-primary">
-                                  <Building size={16} className="mr-1" />
-                                  <span>{experience.company}</span>
-                                </div>
-                                
-                                <div className="flex items-center text-muted-foreground mt-2">
-                                  <CalendarDays size={16} className="mr-1" />
-                                  <span>{experience.duration}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {experience.technologies && (
-                              <div className="flex flex-wrap gap-2 mt-4">
-                                {experience.technologies.map((tech, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
-                                  >
-                                    {tech}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Description appears on hover */}
-                            <div className={cn(
-                              "mt-4 transition-all duration-300 overflow-hidden", 
-                              isHovering ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                            )}>
-                              <ul className="space-y-2 list-disc pl-6 mt-2">
-                                {experience.description.map((item, i) => (
-                                  <li key={i} className="text-muted-foreground">{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                      {/* Hidden the separate description card for left side when not hovering */}
-                    </div>
-                    
-                    {/* CENTER COLUMN (Timeline) */}
-                    <div className="hidden md:block"></div>
-                    
-                    {/* RIGHT COLUMN */}
-                    <div className="w-full">
-                      {/* Hidden the separate description card for right side when not hovering */}
-                      
-                      {/* Experience Card on Right side (for odd indexes) */}
-                      <div 
-                        className={cn(
-                          "transition-all duration-700 transform relative",
-                          isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10",
-                          !isLeft ? "block" : "hidden"
-                        )}
-                        style={{ transitionDelay: `${index * 150}ms` }}
-                        onMouseEnter={() => setIsHovering(true)}
-                        onMouseLeave={() => setIsHovering(false)}
-                      >
-                        <Card className="border border-border hover:border-primary/20 hover:shadow-md transition-all duration-300 md:ml-6 w-full">
-                          <CardContent className="p-6">
-                            <div className="flex items-start gap-4">
-                              <Avatar className="w-16 h-16 border-2 border-primary/20">
-                                {experience.Image ? (
-                                  <AvatarImage src={experience.Image} alt={experience.company} />
-                                ) : (
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
-                                    {companyInitial}
-                                  </AvatarFallback>
-                                )}
-                              </Avatar>
-                              
-                              <div className="flex-1">
-                                <h3 className="text-xl font-bold mb-1">{experience.title}</h3>
-                                
-                                <div className="flex items-center text-primary">
-                                  <Building size={16} className="mr-1" />
-                                  <span>{experience.company}</span>
-                                </div>
-                                
-                                <div className="flex items-center text-muted-foreground mt-2">
-                                  <CalendarDays size={16} className="mr-1" />
-                                  <span>{experience.duration}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {experience.technologies && (
-                              <div className="flex flex-wrap gap-2 mt-4">
-                                {experience.technologies.map((tech, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
-                                  >
-                                    {tech}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Description appears on hover */}
-                            <div className={cn(
-                              "mt-4 transition-all duration-300 overflow-hidden", 
-                              isHovering ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                            )}>
-                              <ul className="space-y-2 list-disc pl-6 mt-2">
-                                {experience.description.map((item, i) => (
-                                  <li key={i} className="text-muted-foreground">{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {experiences.map((experience, index) => (
+                <ExperienceCard 
+                  key={experience.id || index}
+                  experience={experience}
+                  index={index}
+                  isLeft={index % 2 === 0}
+                />
+              ))}
             </div>
           </div>
         </div>
