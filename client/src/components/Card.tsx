@@ -241,6 +241,11 @@ const Card: React.FC<CardProps> = ({
             {renderDescription()}
           </div>
           {renderTags()}
+          {actionButtons && (
+            <div className="mt-3 pt-2 border-t border-gray-800/50 flex justify-end gap-2">
+              {actionButtons}
+            </div>
+          )}
         </>
       ) : (
         // Project Card Layout

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { experiences } from '../lib/data/Experience';
-import { projects } from '../lib/data/Project';
+import React, { useState, useEffect, useCallback } from 'react';
+import { experienceAPI, projectAPI, ExperienceData, ProjectData } from '../api';
+import { experiences as localExperiences } from '../lib/data/Experience';
+import { projects as localProjects } from '../lib/data/Project';
 import skills from '../lib/data/Skill';
 import LoadingIndicator from '../components/LoadingIndicator';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,36 +17,68 @@ type Section = 'experiences' | 'projects' | 'skills' | 'dashboard';
 const AdminPortal: React.FC = () => {
     const [activeSection, setActiveSection] = useState<Section>('dashboard');
     const [loading, setLoading] = useState(false);
-    const [serverExperiences, setServerExperiences] = useState<any[]>([]);
-    const [serverProjects, setServerProjects] = useState<any[]>([]);
+    const [serverExperiences, setServerExperiences] = useState<ExperienceData[]>([]);
+    const [serverProjects, setServerProjects] = useState<ProjectData[]>([]);
     const [error, setError] = useState<string | null>(null);
+    
+    // Function to fetch all data from the API
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Fetch experiences and projects from the server using our API functions
+            const [experiencesData, projectsData] = await Promise.all([
+                experienceAPI.getAll(),
+                projectAPI.getAll()
+            ]);
+            
+            setServerExperiences(experiencesData);
+            setServerProjects(projectsData);
+            setError(null);
+        } catch (err) {
+            console.error('Error fetching data:', err);
+            setError('Failed to load data from server. Using local data instead.');
+            // Use local data as fallback
+            // setServerExperiences(localExperiences);
+            // setServerProjects(localProjects);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-    // Fetch data from API when component mounts
+    // Fetch data when component mounts
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Fetch experiences and projects from the server
-                const [experiencesRes, projectsRes] = await Promise.all([
-                    api.get('/api/experiences/'),
-                    api.get('/api/projects/')
-                ]);
-                
-                setServerExperiences(experiencesRes.data);
-                setServerProjects(projectsRes.data);
-                setError(null);
-            } catch (err) {
-                console.error('Error fetching data:', err);
-                setError('Failed to load data from server. Using local data instead.');
-                // Use local data as fallback
-                setServerExperiences(experiences);
-                setServerProjects(projects);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
         fetchData();
+    }, [fetchData]);
+
+    // Handlers for data changes
+    const handleExperienceChange = useCallback(() => {
+        // Only fetch experiences to avoid unnecessary project refetching
+        setLoading(true);
+        experienceAPI.getAll()
+            .then(data => {
+                setServerExperiences(data);
+                setError(null);
+            })
+            .catch(err => {
+                console.error('Error refreshing experiences:', err);
+                setError('Failed to refresh experiences data.');
+            })
+            .finally(() => setLoading(false));
+    }, []);
+
+    const handleProjectChange = useCallback(() => {
+        // Only fetch projects to avoid unnecessary experience refetching
+        setLoading(true);
+        projectAPI.getAll()
+            .then(data => {
+                setServerProjects(data);
+                setError(null);
+            })
+            .catch(err => {
+                console.error('Error refreshing projects:', err);
+                setError('Failed to refresh projects data.');
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     // Navigation items for the sidebar
@@ -94,8 +126,8 @@ const AdminPortal: React.FC = () => {
             );
         }
         
-        const experienceItems = serverExperiences.length > 0 ? serverExperiences : experiences;
-        const projectItems = serverProjects.length > 0 ? serverProjects : projects;
+        const experienceItems = serverExperiences.length > 0 ? serverExperiences : localExperiences;
+        const projectItems = serverProjects.length > 0 ? serverProjects : localProjects;
         const skillsCount = Object.values(skills).reduce((total, skillList) => total + skillList.length, 0);
         
         return (
@@ -110,13 +142,15 @@ const AdminPortal: React.FC = () => {
                     {activeSection === 'experiences' && (
                         <ExperienceSection 
                             experiences={experienceItems} 
-                            containerVariants={containerVariants} 
+                            containerVariants={containerVariants}
+                            onExperienceChange={handleExperienceChange}
                         />
                     )}
                     {activeSection === 'projects' && (
                         <ProjectSection 
                             projects={projectItems} 
-                            containerVariants={containerVariants} 
+                            containerVariants={containerVariants}
+                            onProjectChange={handleProjectChange}
                         />
                     )}
                     {activeSection === 'skills' && (
