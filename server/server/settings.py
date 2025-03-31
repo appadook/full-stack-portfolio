@@ -14,8 +14,16 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from google.cloud import firestore
 
 load_dotenv()
+
+# Firestore Configuration
+FIREBASE_KEY_PATH = os.path.join(BASE_DIR, "firebase-key.json")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = FIREBASE_KEY_PATH
+
+# Initialize Firestore
+FIRESTORE_DB = firestore.Client()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
